@@ -103,11 +103,12 @@ C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件�
 C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3551 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
 C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3553 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
 C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3558 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
-C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3cbc 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
-C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3cbf 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
-C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3cc3 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
-C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x3cc5 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
+C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x455a 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
+C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x455d 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
+C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x4561 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
+C:\Users\12891\source\repos\Server\Server\main.cpp(1,1): warning C4828: 文件包含在偏移 0x4563 处开始的字符，该字符在当前源字符集中无效(代码页 65001)。
 C:\Users\12891\source\repos\Server\Server\main.cpp(389,39): warning C4474: printf: 格式字符串中传递的参数太多
 C:\Users\12891\source\repos\Server\Server\main.cpp(389,39): message : 占位符和其参数预计 0 可变参数，但提供的却是 1 参数
-C:\Users\12891\source\repos\Server\Server\main.cpp(464,70): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\12891\source\repos\Server\Server\main.cpp(486,61): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\Users\12891\source\repos\Server\Server\main.cpp(512,68): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
   Server.vcxproj -> C:\Users\12891\source\repos\Server\x64\Debug\Server.exe

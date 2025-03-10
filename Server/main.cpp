@@ -452,27 +452,81 @@ int main(int argc, char *argv[])
                     Sleep(20);
                     sendOnStatusReponse(new_socket);
                     std::vector<VideoData> datas;
-                    for (int i = 0; i < 351; i++) {
-                        char path[200] = { 0 };
-                        sprintf(path, "./data/%d.dat", i);
-                        //sprintf(path, "./data/codePacket.dat");
-                        FILE* file = fopen(path, "rb");
-                        fseek(file,0, SEEK_END);
-                        int size = ftell(file);
-                        fseek(file, 0, SEEK_SET);
-                        char* data =(char*) malloc(size);
-                        int ret=fread(data,sizeof(char),  size, file);
-                        fflush(file);
-                        fclose(file);
-                        VideoData vd;
-                        vd.data = data;
-                        vd.size = size;
-                        datas.push_back(vd);
-                    }
+                    int factor = 0;
+                    
+                    //for (int i = 0; i < 3; i++) {
+                    //    factor = 1;
+                    //    char path[200] = { 0 };
+                    //    sprintf(path, "./data/%d.dat", i);
+                    //   // sprintf(path, "./data/codePacket.dat");
+                    //    FILE* file = fopen(path, "rb");
+                    //    fseek(file,0, SEEK_END);
+                    //    int size = ftell(file);
+                    //    fseek(file, 0, SEEK_SET);
+                    //    char* data =(char*) malloc(size);
+                    //    int ret=fread(data,sizeof(char),  size, file);
+                    //    fflush(file);
+                    //    fclose(file);
+                    //   
+                    //    VideoData vd;
+                    //    vd.data = data;
+                    //    vd.size = size;
+                    //    datas.push_back(vd);
+                    //}
+
+                    char* avccData = (char*)malloc(100);
+                    char* temp=avccData;
+                    avccData[0] = 0x17;
+                    avccData[1] = 0x00;
+                    avccData[2] = 0x00;
+                    avccData[3] = 0x00;
+                    avccData[4] = 0x00;
+                    avccData = avccData + 5;
+                    FILE* ptr = fopen("D:/kylinv10/ffmpeg_vs2019/ffmpeg_vs2019/msvc/bin/x64/avcc.dat", "rb");
+                    int avccsize=fread(avccData, 1, 46, ptr);
+                    fflush(ptr);
+                    fclose(ptr);
+                    VideoData avcc;
+                    avcc.data = temp;
+                    avcc.size = avccsize+5;
+                    datas.push_back(avcc);
+
+                    char* start = (char*)malloc(2);
+                    start[0] = 0x57;
+                    start[1] = 0x00;
+                    VideoData startvd;
+                    startvd.data = start;
+                    startvd.size = 2;
+                    datas.push_back(startvd);
+
+                     
+
+                    char path[200] = { 0 };
+                    // sprintf(path, "./data/%d.dat", i);
+                    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
+                    FILE* file = fopen(path, "rb");
+                    fseek(file, 0, SEEK_END);
+                     size = ftell(file);
+                    fseek(file, 0, SEEK_SET);
+                    char* data = (char*)malloc(size);
+                    int ret = fread(data, sizeof(char), size, file);
+                    char buf1[20] = { 0 };
+                    memcpy(buf1, data, 20);
+                    fflush(file);
+                    fclose(file);
+
+                    VideoData vd;
+                    vd.data = data;
+                    vd.size = size;
+                    datas.push_back(vd);
+
                     while (1) {
-                        for (int i = 0; i < 351; i++) {
+                        for (int i = 0; i < 3; i++) {
                             Sleep(30);
                             VideoData vd = datas.at(i);
+                            
+                            char header[8] = { 0 };
+                            memcpy(header, vd.data, 8);
                             sendVideoData(new_socket, vd);
                         }
                     }
