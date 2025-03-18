@@ -14,7 +14,9 @@ uint8_t serverdata[RTMP_HANDSHAKE_PACKET_SIZE + 1] = { 0 };
 uint8_t clientdata[RTMP_HANDSHAKE_PACKET_SIZE ] = { 0 };
 #include"flv.h"
 #include<vector>
-
+#include <pthread.h>
+#include<map>
+int chunkSize = 4096;
 struct Chunk {
     int type;
     int fmt;
@@ -186,7 +188,7 @@ void sendPingRequest(int new_socket, int data) {
     p.data = bw;
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
 
 void sendChunkSize(int new_socket, int data) {
@@ -223,7 +225,7 @@ void sendConnectReponse(int new_socket) {
     
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
 void sendCreateStream(int new_socket) {
     RTMPPacket p;
@@ -249,7 +251,7 @@ void sendCreateStream(int new_socket) {
 
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
 void sendGetStreamLength(int new_socket) {
     RTMPPacket p;
@@ -275,7 +277,7 @@ void sendGetStreamLength(int new_socket) {
 
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
 
 void sendOnStatusReponse(int new_socket) {
@@ -303,11 +305,15 @@ void sendOnStatusReponse(int new_socket) {
 
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
 struct VideoData {
     char* data;
     int size;
+    VideoData() {
+        data = NULL;
+        size = 0;
+    }
 };
 void sendVideoData(int new_socket, VideoData vd) {
     RTMPPacket p;
@@ -321,9 +327,134 @@ void sendVideoData(int new_socket, VideoData vd) {
     p.data =(uint8_t*)vd.data;
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
-    ff_rtmp_packet_write(new_socket, &p, 4096, &prev_pkt_ptr, &nb_prev_pkt);
+    ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
 }
+struct Channel {
+    char streamName[20];
+    std::vector<int> playSocket;     //谁要看的socket
+    int pubSocket;     //谁发布的socket
+    VideoData vd;         //二者共同维护这个data
+    pthread_mutex_t mutex;
+};
+void* recv_img(void* arg) {
+    Channel* channel = (Channel*)arg;
+    char path[200] = { 0 };
+    // sprintf(path, "./data/%d.dat", i);
+    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
+    FILE* file = fopen(path, "rb");
+    fseek(file, 0, SEEK_END);
+    int size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char* data = (char*)malloc(size);
+    int ret = fread(data, sizeof(char), size, file);
+    char buf1[20] = { 0 };
+    memcpy(buf1, data, 20);
+    fflush(file);
+    fclose(file);
+    channel->vd.data= (char*)malloc(size);
+    
+    while (1) {
+        pthread_mutex_lock(&channel->mutex);
+        channel->vd.size = size;
+        memcpy(channel->vd.data, data, size);
+        pthread_mutex_unlock(&channel->mutex);
+    }
+    
+}
+void* send_img(void* arg) {
 
+    Channel* channel = (Channel*)arg;
+
+    std::vector<VideoData> datas;
+    char* avccData = (char*)malloc(100);
+    char* temp = avccData;
+    avccData[0] = 0x17;
+    avccData[1] = 0x00;
+    avccData[2] = 0x00;
+    avccData[3] = 0x00;
+    avccData[4] = 0x00;
+    avccData = avccData + 5;
+    FILE* ptr = fopen("D:/kylinv10/ffmpeg_vs2019/ffmpeg_vs2019/msvc/bin/x64/avcc.dat", "rb");
+    int avccsize = fread(avccData, 1, 46, ptr);
+    fflush(ptr);
+    fclose(ptr);
+    VideoData avcc;
+    avcc.data = temp;
+    avcc.size = avccsize + 5;
+    datas.push_back(avcc);
+
+    char* start = (char*)malloc(2);
+    start[0] = 0x57;
+    start[1] = 0x00;
+    VideoData startvd;
+    startvd.data = start;
+    startvd.size = 2;
+    datas.push_back(startvd);
+
+
+
+    char path[200] = { 0 };
+    // sprintf(path, "./data/%d.dat", i);
+    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
+    FILE* file = fopen(path, "rb");
+    fseek(file, 0, SEEK_END);
+    int size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char* data = (char*)malloc(size);
+    int ret = fread(data, sizeof(char), size, file);
+    char buf1[20] = { 0 };
+    memcpy(buf1, data, 20);
+    fflush(file);
+    fclose(file);
+
+    
+    
+    sendVideoData(channel->playSocket.at(0), datas.at(0));
+    sendVideoData(channel->playSocket.at(0), datas.at(1));
+    VideoData bufvd;
+    
+    while (1) {
+        pthread_mutex_lock(&channel->mutex);
+        if (channel->vd.size != 0) {
+            if(bufvd.size< channel->vd.size) {
+                free(bufvd.data);
+                bufvd.size = channel->vd.size;
+                bufvd.data = (char*)malloc(bufvd.size);
+            }
+            memcpy(bufvd.data, channel->vd.data, channel->vd.size);
+        }
+        pthread_mutex_unlock(&channel->mutex);
+        for (int i = 0; i < channel->playSocket.size(); i++) {
+            int socket = channel->playSocket.at(i);
+            sendVideoData(socket, bufvd);
+        }
+        
+    }
+    
+    return NULL;
+}
+std::map<std::string, Channel> channelData;
+
+void createStream(char* streamName,int socket,bool isPub) {
+    std::string name(streamName);
+    std::map<std::string, Channel>::iterator iter=channelData.find(name);
+    if (iter == channelData.end()) {
+        Channel channel;
+        if (isPub) {
+            channel.pubSocket=socket;       //如果是发布者创建时
+        }
+        else {
+            channel.playSocket.push_back(socket);//如果是订阅者创建时
+        }
+       
+        pthread_mutex_t mex;
+        pthread_mutex_init(&mex, NULL);
+        channel.mutex = mex;
+        channel.vd.data = NULL;
+        channel.vd.size = 0;
+        channelData.insert({ name, channel });
+    }
+}
 int main(int argc, char *argv[])
 {
     
@@ -374,6 +505,11 @@ int main(int argc, char *argv[])
     }
 
     printf("Waiting for connections...\n");
+
+   
+    const char* msg = "Hello from thread!";
+   
+    
     while (1) {
         // 接受客户端连接
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -424,36 +560,69 @@ int main(int argc, char *argv[])
                     sendWindowSize(new_socket, 2500000);
                     sendPeerBandwidth(new_socket, 2500000);
                     sendUserControl(new_socket, 0);
-                    sendChunkSize(new_socket, 4096);
+                    sendChunkSize(new_socket, chunkSize);
                     sendConnectReponse(new_socket);
                     
                     //处理返回来的windowsSize
-                    ff_rtmp_packet_read_internal(new_socket, &p, 128,
+                    ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
                         &prev_pkt, nb_prev_pkt,
                         hdr);
                     int size=AV_RB32(p.data);
+                    //到这里connect结束
+                    
                     //接收createstream
-                    ff_rtmp_packet_read_internal(new_socket, &p, 128,
+                    ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
                         &prev_pkt, nb_prev_pkt,
                         hdr);
+                    
                     Sleep(20);
                     sendCreateStream(new_socket);
-                    //接收play消息
-                   ff_rtmp_packet_read_internal(new_socket, &p, 128,
-                        &prev_pkt, nb_prev_pkt,
-                        hdr);
-                   Sleep(20);
-                   sendGetStreamLength(new_socket);
-                   ff_rtmp_packet_read_internal(new_socket, &p, 128,
-                       &prev_pkt, nb_prev_pkt,
-                       hdr);
-                    Sleep(20);
-                    sendPingRequest(new_socket, 6);
-                    Sleep(20);
-                    sendOnStatusReponse(new_socket);
-                    std::vector<VideoData> datas;
-                    int factor = 0;
-                    
+                    //到这里才是创建结束呢 接下来才分是play还是publish呢
+
+                    while (1) {
+                        //接收play消息
+                        ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
+                            &prev_pkt, nb_prev_pkt,
+                            hdr);
+                        context.buffer = p.data;
+                        context.buffer_start = p.data;
+                        context.buffer_end = p.data + p.size;
+                        int length;
+                        char command[50] = { 0 };
+                        ff_amf_read_string(&context, (uint8_t*)command, CSIZE, &length);
+                        if (!strcmp(command, "play")) {
+                            //接着解析
+                            
+                            double val=0;
+                            ff_amf_read_number(&context, &val);
+                            ff_amf_read_null(&context);
+                            char streamName[50] = { 0 };
+                            ff_amf_read_string(&context, (uint8_t*)streamName, CSIZE, &length);
+                            createStream(streamName, new_socket, false);
+                            Sleep(20);
+                            sendPingRequest(new_socket, 6);
+                            Sleep(20);
+                            sendOnStatusReponse(new_socket);
+                            
+                            std::map<std::string, Channel>::iterator iter = channelData.find(streamName);
+                            pthread_t thread;
+                            pthread_create(&thread, NULL, recv_img, (void*)&iter->second);
+                            pthread_create(&thread, NULL, send_img, (void*)&iter->second);
+                            pthread_join(thread, NULL);
+                            break;
+                        }
+                        else if(!strcmp(command, "getStreamLength")){
+                            sendGetStreamLength(new_socket);
+                        }
+                       
+                    }
+                  
+                   
+                   
+                   
+                  
+                   
+                   
                     //for (int i = 0; i < 3; i++) {
                     //    factor = 1;
                     //    char path[200] = { 0 };
@@ -474,63 +643,7 @@ int main(int argc, char *argv[])
                     //    datas.push_back(vd);
                     //}
 
-                    char* avccData = (char*)malloc(100);
-                    char* temp=avccData;
-                    avccData[0] = 0x17;
-                    avccData[1] = 0x00;
-                    avccData[2] = 0x00;
-                    avccData[3] = 0x00;
-                    avccData[4] = 0x00;
-                    avccData = avccData + 5;
-                    FILE* ptr = fopen("D:/kylinv10/ffmpeg_vs2019/ffmpeg_vs2019/msvc/bin/x64/avcc.dat", "rb");
-                    int avccsize=fread(avccData, 1, 46, ptr);
-                    fflush(ptr);
-                    fclose(ptr);
-                    VideoData avcc;
-                    avcc.data = temp;
-                    avcc.size = avccsize+5;
-                    datas.push_back(avcc);
-
-                    char* start = (char*)malloc(2);
-                    start[0] = 0x57;
-                    start[1] = 0x00;
-                    VideoData startvd;
-                    startvd.data = start;
-                    startvd.size = 2;
-                    datas.push_back(startvd);
-
-                     
-
-                    char path[200] = { 0 };
-                    // sprintf(path, "./data/%d.dat", i);
-                    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
-                    FILE* file = fopen(path, "rb");
-                    fseek(file, 0, SEEK_END);
-                     size = ftell(file);
-                    fseek(file, 0, SEEK_SET);
-                    char* data = (char*)malloc(size);
-                    int ret = fread(data, sizeof(char), size, file);
-                    char buf1[20] = { 0 };
-                    memcpy(buf1, data, 20);
-                    fflush(file);
-                    fclose(file);
-
-                    VideoData vd;
-                    vd.data = data;
-                    vd.size = size;
-                    datas.push_back(vd);
-
-                    while (1) {
-                        for (int i = 0; i < 3; i++) {
-                            Sleep(30);
-                            VideoData vd = datas.at(i);
-                            
-                            char header[8] = { 0 };
-                            memcpy(header, vd.data, 8);
-                            sendVideoData(new_socket, vd);
-                        }
-                    }
-                    
+                   
                 }
             //}
             
