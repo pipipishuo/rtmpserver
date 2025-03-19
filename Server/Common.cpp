@@ -206,7 +206,7 @@ static int rtmp_packet_read_one_chunk(int socket, RTMPPacket* p,
         }
     }
     if (ts_field == 0xFFFFFF) {
-        if (recv(socket, (char*)buf, 4,0) != 1)
+        if (recv(socket, (char*)buf, 4,0) != 4)
             return AVERROR(EIO);
         timestamp = AV_RB32(buf);
     }
@@ -305,7 +305,7 @@ int ff_rtmp_packet_read_internal(int socket,RTMPPacket* p, int chunk_size,
         hdr = data[0];
         data++;
         
-        int ret = rtmp_packet_read_one_chunk(socket,p, 128, prev_pkt,
+        int ret = rtmp_packet_read_one_chunk(socket,p, chunk_size, prev_pkt,
             nb_prev_pkt, hdr);
         if (ret > 0 || ret != AVERROR(EAGAIN))
             return ret;

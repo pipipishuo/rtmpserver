@@ -453,6 +453,7 @@ void createStream(char* streamName, int socket, QMap<QString, Channel> &channelD
         channel.vd.data = NULL;
         channel.vd.size = 0;
         channelData.insert(name, channel );
+        
         return;
     }
     return;
@@ -461,6 +462,7 @@ void createStream(char* streamName, int socket, QMap<QString, Channel> &channelD
 int main(int argc, char* argv[])
 {
     QMap<QString, Channel> channelData;
+    
    
     WORD wVersionRequested;
     WSADATA wsaData;
@@ -513,7 +515,7 @@ int main(int argc, char* argv[])
 
     const char* msg = "Hello from thread!";
 
-
+    
     while (1) {
         // 接受客户端连接
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -521,6 +523,7 @@ int main(int argc, char* argv[])
             closesocket(server_fd);
             exit(EXIT_FAILURE);
         }
+        
         //握手流程
         {
             // 接收数据
@@ -538,7 +541,7 @@ int main(int argc, char* argv[])
 
             //再次接收  但不知到有啥用
             int valread1 = recv(new_socket, buffer, BUFFER_SIZE, 0);
-
+            
         }
         //处理消息都应该在这里处理
         {
@@ -578,7 +581,12 @@ int main(int argc, char* argv[])
                 ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
                     &prev_pkt, nb_prev_pkt,
                     hdr);
-
+                context.buffer = p.data;
+                context.buffer_start = p.data;
+                context.buffer_end = p.data + p.size;
+                int length;
+                char command[50] = { 0 };
+                ff_amf_read_string(&context, (uint8_t*)command, CSIZE, &length);
                 Sleep(20);
                 sendCreateStream(new_socket);
                 //到这里才是创建结束呢 接下来才分是play还是publish呢
