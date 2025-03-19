@@ -11,11 +11,11 @@
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 uint8_t serverdata[RTMP_HANDSHAKE_PACKET_SIZE + 1] = { 0 };
-uint8_t clientdata[RTMP_HANDSHAKE_PACKET_SIZE ] = { 0 };
+uint8_t clientdata[RTMP_HANDSHAKE_PACKET_SIZE] = { 0 };
 #include"flv.h"
 #include<vector>
 #include <pthread.h>
-#include<map>
+#include<QMap>
 int chunkSize = 4096;
 struct Chunk {
     int type;
@@ -52,7 +52,7 @@ void signal(uint8_t* buf) {
     memcpy(buf + digest_pos, digest, 32);
 }
 void makeS0S1() {
-    memset(serverdata, RTMP_HANDSHAKE_PACKET_SIZE+1, 0);
+    memset(serverdata, RTMP_HANDSHAKE_PACKET_SIZE + 1, 0);
     serverdata[0] = 3;
     serverdata[5] = 8;
     serverdata[6] = 8;
@@ -83,34 +83,34 @@ void makeSe(char* buf) {
         rtmp_server_key, sizeof(rtmp_server_key),
         digest);
     if (ret < 0)
-        return ;
+        return;
 
     ret = ff_rtmp_calc_digest(clientdata, RTMP_HANDSHAKE_PACKET_SIZE - 32,
         0, digest, 32, signature);
 
     if (ret < 0)
-        return ;
+        return;
     memcpy(clientdata + RTMP_HANDSHAKE_PACKET_SIZE - 32, signature, 32);
-    
+
 
 }
 
-ConnectObject parseConnectMessage(GetByteContext* context){
+ConnectObject parseConnectMessage(GetByteContext* context) {
 #define CSIZE 50
     ConnectObject co;
     int length = 0;
-   
-   
+
+
     ff_amf_read_string(context, (uint8_t*)co.id, CSIZE, &length);
     ff_amf_read_number(context, &(co.TransactionID));
-    AMFDataType dt=(AMFDataType)bytestream2_get_byte(context);
+    AMFDataType dt = (AMFDataType)bytestream2_get_byte(context);
     uint8_t fileName[20] = { 0 };
     ff_amf_read_field_name(context, fileName);
     ff_amf_read_string(context, (uint8_t*)co.app, CSIZE, &length);
     ff_amf_read_field_name(context, fileName);
     ff_amf_read_string(context, (uint8_t*)co.flashver, CSIZE, &length);
-   /* ff_amf_read_field_name(context, fileName);
-    ff_amf_read_string(context, (uint8_t*)co.swfUrl, CSIZE, &length);*/
+    /* ff_amf_read_field_name(context, fileName);
+     ff_amf_read_string(context, (uint8_t*)co.swfUrl, CSIZE, &length);*/
     ff_amf_read_field_name(context, fileName);
     ff_amf_read_string(context, (uint8_t*)co.tcUrl, CSIZE, &length);
     ff_amf_read_field_name(context, fileName);
@@ -123,7 +123,7 @@ ConnectObject parseConnectMessage(GetByteContext* context){
     ff_amf_read_number(context, &(co.videoCodecs));
     ff_amf_read_field_name(context, fileName);
     ff_amf_read_number(context, &(co.videoFunction));
-    
+
     /*ff_amf_read_field_name(context, fileName);
     ff_amf_read_string(context, (uint8_t*)co.pageUrl, CSIZE, &length);
     ff_amf_read_field_name(context, fileName);
@@ -131,7 +131,7 @@ ConnectObject parseConnectMessage(GetByteContext* context){
     dt = (AMFDataType)bytestream2_get_be24(context);
     return co;
 }
-void sendWindowSize(int new_socket,int size) {
+void sendWindowSize(int new_socket, int size) {
     RTMPPacket p;
     p.channel_id = 3;
     p.ts_field = 0;
@@ -184,7 +184,7 @@ void sendPingRequest(int new_socket, int data) {
     uint8_t* bw = (uint8_t*)malloc(6);
     memset(bw, 0, 6);
     AV_WB16(bw, data);
-    
+
     p.data = bw;
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
@@ -214,7 +214,7 @@ void sendConnectReponse(int new_socket) {
     p.size = 261;
     p.offset = 0;
     p.type = RTMP_PT_INVOKE;
-    
+
     uint8_t* bw = (uint8_t*)malloc(261);
     for (int i = 0; i < 261; i++) {
         bw[i] = i;
@@ -222,7 +222,7 @@ void sendConnectReponse(int new_socket) {
     p.data = bw;
     ff_amf_write_string(&bw, "_result");
     ff_amf_write_number(&bw, 1);
-    
+
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
     ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
@@ -262,7 +262,7 @@ void sendGetStreamLength(int new_socket) {
     p.size = 29;
     p.offset = 29;
     p.type = RTMP_PT_INVOKE;
-    
+
     uint8_t* bw = (uint8_t*)malloc(29);
     p.data = bw;
 
@@ -289,14 +289,14 @@ void sendOnStatusReponse(int new_socket) {
     p.size = 261;
     p.offset = 0;
     p.type = RTMP_PT_INVOKE;
-    
+
     uint8_t* bw = (uint8_t*)malloc(261);
     p.data = bw;
     std::string strbuffer = "onStatus";
     ff_amf_write_string(&bw, strbuffer.c_str());
     ff_amf_write_number(&bw, 2);
     ff_amf_write_null(&bw);
-    
+
     ff_amf_write_object_start(&bw);
     ff_amf_write_field_name(&bw, "level");
     ff_amf_write_string(&bw, "status");
@@ -322,9 +322,9 @@ void sendVideoData(int new_socket, VideoData vd) {
     p.size = vd.size;
     p.type = RTMP_PT_VIDEO;
     p.extra = 0;
-    
 
-    p.data =(uint8_t*)vd.data;
+
+    p.data = (uint8_t*)vd.data;
     RTMPPacket* prev_pkt_ptr = NULL;
     int nb_prev_pkt = 0;
     ff_rtmp_packet_write(new_socket, &p, chunkSize, &prev_pkt_ptr, &nb_prev_pkt);
@@ -351,15 +351,15 @@ void* recv_img(void* arg) {
     memcpy(buf1, data, 20);
     fflush(file);
     fclose(file);
-    channel->vd.data= (char*)malloc(size);
-    
+    channel->vd.data = (char*)malloc(size);
+
     while (1) {
         pthread_mutex_lock(&channel->mutex);
         channel->vd.size = size;
         memcpy(channel->vd.data, data, size);
         pthread_mutex_unlock(&channel->mutex);
     }
-    
+
 }
 void* send_img(void* arg) {
 
@@ -407,16 +407,16 @@ void* send_img(void* arg) {
     fflush(file);
     fclose(file);
 
-    
-    
+
+
     sendVideoData(channel->playSocket.at(0), datas.at(0));
     sendVideoData(channel->playSocket.at(0), datas.at(1));
     VideoData bufvd;
-    
+
     while (1) {
         pthread_mutex_lock(&channel->mutex);
         if (channel->vd.size != 0) {
-            if(bufvd.size< channel->vd.size) {
+            if (bufvd.size < channel->vd.size) {
                 free(bufvd.data);
                 bufvd.size = channel->vd.size;
                 bufvd.data = (char*)malloc(bufvd.size);
@@ -428,36 +428,40 @@ void* send_img(void* arg) {
             int socket = channel->playSocket.at(i);
             sendVideoData(socket, bufvd);
         }
-        
+
     }
-    
+
     return NULL;
 }
-std::map<std::string, Channel> channelData;
 
-void createStream(char* streamName,int socket,bool isPub) {
-    std::string name(streamName);
-    std::map<std::string, Channel>::iterator iter=channelData.find(name);
+
+void createStream(char* streamName, int socket, QMap<QString, Channel> &channelData, bool isPub) {
+    QString name(streamName);
+    QMap<QString, Channel>::iterator iter = channelData.find(name);
     if (iter == channelData.end()) {
         Channel channel;
         if (isPub) {
-            channel.pubSocket=socket;       //如果是发布者创建时
+            channel.pubSocket = socket;       //如果是发布者创建时
         }
         else {
             channel.playSocket.push_back(socket);//如果是订阅者创建时
         }
-       
+
         pthread_mutex_t mex;
         pthread_mutex_init(&mex, NULL);
         channel.mutex = mex;
         channel.vd.data = NULL;
         channel.vd.size = 0;
-        channelData.insert({ name, channel });
+        channelData.insert(name, channel );
+        return;
     }
+    return;
 }
-int main(int argc, char *argv[])
+
+int main(int argc, char* argv[])
 {
-    
+    QMap<QString, Channel> channelData;
+   
     WORD wVersionRequested;
     WSADATA wsaData;
     int err;
@@ -475,7 +479,7 @@ int main(int argc, char *argv[])
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
-    char* buffer= (char* )malloc(BUFFER_SIZE);
+    char* buffer = (char*)malloc(BUFFER_SIZE);
 
     ;
     const char* hello = "Hello from server";
@@ -490,7 +494,7 @@ int main(int argc, char *argv[])
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-    err=bind(server_fd, (struct sockaddr*)&address, sizeof(address));
+    err = bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     if (err < 0) {
         perror("Bind failed");
         closesocket(server_fd);
@@ -506,10 +510,10 @@ int main(int argc, char *argv[])
 
     printf("Waiting for connections...\n");
 
-   
+
     const char* msg = "Hello from thread!";
-   
-    
+
+
     while (1) {
         // 接受客户端连接
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
@@ -539,120 +543,120 @@ int main(int argc, char *argv[])
         //处理消息都应该在这里处理
         {
             //while (1) {
-                RTMPPacket p;
-                
-                RTMPPacket* prev_pkt= (RTMPPacket * )malloc(sizeof(RTMPPacket)*64);
-                memset(prev_pkt, 0, sizeof(RTMPPacket) * 64);
-                int* nb_prev_pkt=0;
-                uint8_t hdr = 0;;
-                ff_rtmp_packet_read_internal(new_socket, &p, 128,
+            RTMPPacket p;
+
+            RTMPPacket* prev_pkt = (RTMPPacket*)malloc(sizeof(RTMPPacket) * 64);
+            memset(prev_pkt, 0, sizeof(RTMPPacket) * 64);
+            int* nb_prev_pkt = 0;
+            uint8_t hdr = 0;;
+            ff_rtmp_packet_read_internal(new_socket, &p, 128,
+                &prev_pkt, nb_prev_pkt,
+                hdr);
+            if (p.type == RTMP_PT_INVOKE) {
+
+                GetByteContext context;
+                context.buffer = p.data;
+                context.buffer_start = p.data;
+                context.buffer_end = p.data + p.size;
+                char buf[45] = { 0 };
+                memcpy(buf, p.data, 45);
+                ConnectObject co = parseConnectMessage(&context);
+                sendWindowSize(new_socket, 2500000);
+                sendPeerBandwidth(new_socket, 2500000);
+                sendUserControl(new_socket, 0);
+                sendChunkSize(new_socket, chunkSize);
+                sendConnectReponse(new_socket);
+
+                //处理返回来的windowsSize
+                ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
                     &prev_pkt, nb_prev_pkt,
                     hdr);
-                if (p.type == RTMP_PT_INVOKE) {
-                    
-                    GetByteContext context;
+                int size = AV_RB32(p.data);
+                //到这里connect结束
+
+                //接收createstream
+                ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
+                    &prev_pkt, nb_prev_pkt,
+                    hdr);
+
+                Sleep(20);
+                sendCreateStream(new_socket);
+                //到这里才是创建结束呢 接下来才分是play还是publish呢
+
+                while (1) {
+                    //接收play消息
+                    ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
+                        &prev_pkt, nb_prev_pkt,
+                        hdr);
                     context.buffer = p.data;
                     context.buffer_start = p.data;
-                    context.buffer_end = p.data+p.size;
-                    char buf[45] = { 0 };
-                    memcpy(buf, p.data, 45);
-                    ConnectObject co=parseConnectMessage(&context);
-                    sendWindowSize(new_socket, 2500000);
-                    sendPeerBandwidth(new_socket, 2500000);
-                    sendUserControl(new_socket, 0);
-                    sendChunkSize(new_socket, chunkSize);
-                    sendConnectReponse(new_socket);
-                    
-                    //处理返回来的windowsSize
-                    ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
-                        &prev_pkt, nb_prev_pkt,
-                        hdr);
-                    int size=AV_RB32(p.data);
-                    //到这里connect结束
-                    
-                    //接收createstream
-                    ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
-                        &prev_pkt, nb_prev_pkt,
-                        hdr);
-                    
-                    Sleep(20);
-                    sendCreateStream(new_socket);
-                    //到这里才是创建结束呢 接下来才分是play还是publish呢
+                    context.buffer_end = p.data + p.size;
+                    int length;
+                    char command[50] = { 0 };
+                    ff_amf_read_string(&context, (uint8_t*)command, CSIZE, &length);
+                    if (!strcmp(command, "play")) {
+                        //接着解析
 
-                    while (1) {
-                        //接收play消息
-                        ff_rtmp_packet_read_internal(new_socket, &p, chunkSize,
-                            &prev_pkt, nb_prev_pkt,
-                            hdr);
-                        context.buffer = p.data;
-                        context.buffer_start = p.data;
-                        context.buffer_end = p.data + p.size;
-                        int length;
-                        char command[50] = { 0 };
-                        ff_amf_read_string(&context, (uint8_t*)command, CSIZE, &length);
-                        if (!strcmp(command, "play")) {
-                            //接着解析
-                            
-                            double val=0;
-                            ff_amf_read_number(&context, &val);
-                            ff_amf_read_null(&context);
-                            char streamName[50] = { 0 };
-                            ff_amf_read_string(&context, (uint8_t*)streamName, CSIZE, &length);
-                            createStream(streamName, new_socket, false);
-                            Sleep(20);
-                            sendPingRequest(new_socket, 6);
-                            Sleep(20);
-                            sendOnStatusReponse(new_socket);
-                            
-                            std::map<std::string, Channel>::iterator iter = channelData.find(streamName);
-                            pthread_t thread;
-                            pthread_create(&thread, NULL, recv_img, (void*)&iter->second);
-                            pthread_create(&thread, NULL, send_img, (void*)&iter->second);
-                            pthread_join(thread, NULL);
-                            break;
-                        }
-                        else if(!strcmp(command, "getStreamLength")){
-                            sendGetStreamLength(new_socket);
-                        }
-                       
+                        double val = 0;
+                        ff_amf_read_number(&context, &val);
+                        ff_amf_read_null(&context);
+                        char streamName[50] = { 0 };
+                        ff_amf_read_string(&context, (uint8_t*)streamName, CSIZE, &length);
+                        createStream(streamName, new_socket, channelData, false);
+                        Sleep(20);
+                        sendPingRequest(new_socket, 6);
+                        Sleep(20);
+                        sendOnStatusReponse(new_socket);
+
+                        QMap<QString, Channel>::iterator iter = channelData.find(streamName);
+                        pthread_t thread;
+                        pthread_create(&thread, NULL, recv_img, (void*)&iter.value());
+                        pthread_create(&thread, NULL, send_img, (void*)&iter.value());
+                        pthread_join(thread, NULL);
+                        break;
                     }
-                  
-                   
-                   
-                   
-                  
-                   
-                   
-                    //for (int i = 0; i < 3; i++) {
-                    //    factor = 1;
-                    //    char path[200] = { 0 };
-                    //    sprintf(path, "./data/%d.dat", i);
-                    //   // sprintf(path, "./data/codePacket.dat");
-                    //    FILE* file = fopen(path, "rb");
-                    //    fseek(file,0, SEEK_END);
-                    //    int size = ftell(file);
-                    //    fseek(file, 0, SEEK_SET);
-                    //    char* data =(char*) malloc(size);
-                    //    int ret=fread(data,sizeof(char),  size, file);
-                    //    fflush(file);
-                    //    fclose(file);
-                    //   
-                    //    VideoData vd;
-                    //    vd.data = data;
-                    //    vd.size = size;
-                    //    datas.push_back(vd);
-                    //}
+                    else if (!strcmp(command, "getStreamLength")) {
+                        sendGetStreamLength(new_socket);
+                    }
 
-                   
                 }
+
+
+
+
+
+
+
+                //for (int i = 0; i < 3; i++) {
+                //    factor = 1;
+                //    char path[200] = { 0 };
+                //    sprintf(path, "./data/%d.dat", i);
+                //   // sprintf(path, "./data/codePacket.dat");
+                //    FILE* file = fopen(path, "rb");
+                //    fseek(file,0, SEEK_END);
+                //    int size = ftell(file);
+                //    fseek(file, 0, SEEK_SET);
+                //    char* data =(char*) malloc(size);
+                //    int ret=fread(data,sizeof(char),  size, file);
+                //    fflush(file);
+                //    fclose(file);
+                //   
+                //    VideoData vd;
+                //    vd.data = data;
+                //    vd.size = size;
+                //    datas.push_back(vd);
+                //}
+
+
+            }
             //}
-            
+
 
         }
 
         printf("Hello message sent\n");
     }
-    
+
 
     // 关闭套接字
     closesocket(new_socket);

@@ -283,7 +283,8 @@ int ff_rtmp_check_alloc_array(RTMPPacket** prev_pkt, int* nb_prev_pkt,
     // This can't use the av_reallocp family of functions, since we
     // would need to free each element in the array before the array
     // itself is freed.
-    ptr =(RTMPPacket*) malloc( nb_alloc*sizeof(**prev_pkt));
+    int size=nb_alloc * sizeof(**prev_pkt);
+    ptr =(RTMPPacket*) malloc(size);
     if (!ptr)
         return AVERROR(ENOMEM);
     memset(ptr + *nb_prev_pkt, 0, (nb_alloc - *nb_prev_pkt) * sizeof(*ptr));
@@ -319,24 +320,24 @@ int ff_rtmp_packet_write(int h, RTMPPacket* pkt,
     int off = 0;
     int written = 0;
     int ret;
-    RTMPPacket* prev_pkt;
-    int use_delta; // flag if using timestamp delta, not RTMP_PS_TWELVEBYTES
+    //RTMPPacket* prev_pkt;
+    int use_delta=0; // flag if using timestamp delta, not RTMP_PS_TWELVEBYTES
     uint32_t timestamp; // full 32-bit timestamp or delta value
 
-    if ((ret = ff_rtmp_check_alloc_array(prev_pkt_ptr, nb_prev_pkt,
+    /*if ((ret = ff_rtmp_check_alloc_array(prev_pkt_ptr, nb_prev_pkt,
         pkt->channel_id)) < 0)
         return ret;
-    prev_pkt = *prev_pkt_ptr;
+    prev_pkt = *prev_pkt_ptr;*/
 
     //if channel_id = 0, this is first presentation of prev_pkt, send full hdr.
-    use_delta = prev_pkt[pkt->channel_id].channel_id &&
+   /* use_delta = prev_pkt[pkt->channel_id].channel_id &&
         pkt->extra == prev_pkt[pkt->channel_id].extra &&
-        pkt->timestamp >= prev_pkt[pkt->channel_id].timestamp;
+        pkt->timestamp >= prev_pkt[pkt->channel_id].timestamp;*/
 
     timestamp = pkt->timestamp;
-    if (use_delta) {
+    /*if (use_delta) {
         timestamp -= prev_pkt[pkt->channel_id].timestamp;
-    }
+    }*/
     if (timestamp >= 0xFFFFFF) {
         pkt->ts_field = 0xFFFFFF;
     }
@@ -344,17 +345,7 @@ int ff_rtmp_packet_write(int h, RTMPPacket* pkt,
         pkt->ts_field = timestamp;
     }
 
-    if (use_delta) {
-        if (pkt->type == prev_pkt[pkt->channel_id].type &&
-            pkt->size == prev_pkt[pkt->channel_id].size) {
-            mode = RTMP_PS_FOURBYTES;
-            if (pkt->ts_field == prev_pkt[pkt->channel_id].ts_field)
-                mode = RTMP_PS_ONEBYTE;
-        }
-        else {
-            mode = RTMP_PS_EIGHTBYTES;
-        }
-    }
+    
 
     if (pkt->channel_id < 64) {
         bytestream_put_byte(&p, pkt->channel_id | (mode << 6));
@@ -379,12 +370,12 @@ int ff_rtmp_packet_write(int h, RTMPPacket* pkt,
     if (pkt->ts_field == 0xFFFFFF)
         bytestream_put_be32(&p, timestamp);
     // save history
-    prev_pkt[pkt->channel_id].channel_id = pkt->channel_id;
+    /*prev_pkt[pkt->channel_id].channel_id = pkt->channel_id;
     prev_pkt[pkt->channel_id].type = pkt->type;
     prev_pkt[pkt->channel_id].size = pkt->size;
     prev_pkt[pkt->channel_id].timestamp = pkt->timestamp;
     prev_pkt[pkt->channel_id].ts_field = pkt->ts_field;
-    prev_pkt[pkt->channel_id].extra = pkt->extra;
+    prev_pkt[pkt->channel_id].extra = pkt->extra;*/
 
     // FIXME:
     // Writing packets is currently not optimized to minimize system calls.

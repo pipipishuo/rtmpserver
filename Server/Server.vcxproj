@@ -71,6 +71,7 @@
     <Link>
       <AdditionalLibraryDirectories>D:\kylinv10\ffmpeg_vs2019\ffmpeg_vs2019\msvc\lib\x64;C:\Users\12891\source\repos\Server\lib\prebuilt-dll-2-9-1-release\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Psapi.lib;libavdeviced.lib;libavfilterd.lib;libavformatd.lib;libavcodecd.lib;libpostprocd.lib;libswresampled.lib;libswscaled.lib;libavutild.lib;libsdl2d.lib;pthreadVC2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapCommitSize>10240</HeapCommitSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
