@@ -351,12 +351,25 @@ void* recv_img(void* arg) {
     memcpy(buf1, data, 20);
     fflush(file);
     fclose(file);
-    channel->vd.data = (char*)malloc(size);
+    channel->vd.data = (char*)malloc(size*5);
 
+
+    RTMPPacket p;
+
+    RTMPPacket* prev_pkt = (RTMPPacket*)malloc(sizeof(RTMPPacket) * 64);
+    memset(prev_pkt, 0, sizeof(RTMPPacket) * 64);
+    int* nb_prev_pkt = 0;
+    uint8_t hdr = 0;;
+    
     while (1) {
+
+        ff_rtmp_packet_read_internal(channel->pubSocket, &p, chunkSize,
+            &prev_pkt, nb_prev_pkt,
+            hdr);
         pthread_mutex_lock(&channel->mutex);
-        channel->vd.size = size;
-        memcpy(channel->vd.data, data, size);
+        channel->vd.size = p.size;
+        memset(channel->vd.data, 0, p.size);
+        memcpy(channel->vd.data, p.data, p.size);
         pthread_mutex_unlock(&channel->mutex);
     }
 
@@ -391,42 +404,83 @@ void* send_img(void* arg) {
     startvd.size = 2;
     datas.push_back(startvd);
 
+    char* stop = (char*)malloc(2);
+    stop[0] = 0x57;
+    stop[1] = 0x01;
+    VideoData stopvd;
+    stopvd.data = stop;
+    stopvd.size = 2;
+    datas.push_back(startvd);
 
+    //char* firstData = NULL;
+    //int firstSize = 0;
+    //{
+    //    char path[200] = { 0 };
+    //    // sprintf(path, "./data/%d.dat", i);
+    //    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
+    //    FILE* file = fopen(path, "rb");
+    //    fseek(file, 0, SEEK_END);
+    //    firstSize = ftell(file);
+    //    fseek(file, 0, SEEK_SET);
+    //    firstData = (char*)malloc(firstSize);
+    //    int ret = fread(firstData, sizeof(char), firstSize, file);
+    //    char buf1[20] = { 0 };
+    //    memcpy(buf1, firstData, 20);
+    //    fflush(file);
+    //    fclose(file);
+    //}
+    //
 
-    char path[200] = { 0 };
-    // sprintf(path, "./data/%d.dat", i);
-    sprintf(path, "C:/Users/12891/source/repos/tool/tool/codePacket.dat");
-    FILE* file = fopen(path, "rb");
-    fseek(file, 0, SEEK_END);
-    int size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    char* data = (char*)malloc(size);
-    int ret = fread(data, sizeof(char), size, file);
-    char buf1[20] = { 0 };
-    memcpy(buf1, data, 20);
-    fflush(file);
-    fclose(file);
-
+    //char* secondData = NULL;
+    //int secondSize = 0;
+    //{
+    //    char path[200] = { 0 };
+    //    // sprintf(path, "./data/%d.dat", i);
+    //    sprintf(path, "C:/Users/12891/source/repos/vedioClient/QtWidgetsApplication1/mdatCodePacket.dat");
+    //    FILE* file = fopen(path, "rb");
+    //    fseek(file, 0, SEEK_END);
+    //    secondSize = ftell(file);
+    //    fseek(file, 0, SEEK_SET);
+    //    secondData = (char*)malloc(secondSize);
+    //    int ret = fread(secondData, sizeof(char), secondSize, file);
+    //    char buf1[20] = { 0 };
+    //    memcpy(buf1, secondData, 20);
+    //    fflush(file);
+    //    fclose(file);
+    //}
 
 
     sendVideoData(channel->playSocket.at(0), datas.at(0));
-    sendVideoData(channel->playSocket.at(0), datas.at(1));
+    
     VideoData bufvd;
-
+    int i = 0;
     while (1) {
+        i++;
+        i = i % 2;
         pthread_mutex_lock(&channel->mutex);
+        /*if (i == 0) {
+            channel->vd.data = firstData;
+            channel->vd.size = firstSize;
+        }
+        if (i ==1) {
+            channel->vd.data = secondData;
+            channel->vd.size = secondSize;
+        }*/
         if (channel->vd.size != 0) {
             if (bufvd.size < channel->vd.size) {
                 free(bufvd.data);
                 bufvd.size = channel->vd.size;
                 bufvd.data = (char*)malloc(bufvd.size);
             }
+            bufvd.size = channel->vd.size;
             memcpy(bufvd.data, channel->vd.data, channel->vd.size);
         }
         pthread_mutex_unlock(&channel->mutex);
         for (int i = 0; i < channel->playSocket.size(); i++) {
             int socket = channel->playSocket.at(i);
+            sendVideoData(channel->playSocket.at(0), datas.at(1));
             sendVideoData(socket, bufvd);
+            sendVideoData(channel->playSocket.at(0), datas.at(2));
         }
 
     }
@@ -455,6 +509,16 @@ void createStream(char* streamName, int socket, QMap<QString, Channel> &channelD
         channelData.insert(name, channel );
         
         return;
+    }
+    else {
+        Channel channel= iter.value();
+        if (isPub) {
+            channel.pubSocket = socket;       //如果是发布者创建时
+        }
+        else {
+            channel.playSocket.push_back(socket);//如果是订阅者创建时
+        }
+        channelData[name] = channel;
     }
     return;
 }
@@ -494,7 +558,7 @@ int main(int argc, char* argv[])
 
     // 绑定IP和端口
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");;
     address.sin_port = htons(PORT);
     err = bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     if (err < 0) {
@@ -618,15 +682,27 @@ int main(int argc, char* argv[])
 
                         QMap<QString, Channel>::iterator iter = channelData.find(streamName);
                         pthread_t thread;
-                        pthread_create(&thread, NULL, recv_img, (void*)&iter.value());
+                        //pthread_create(&thread, NULL, recv_img, (void*)&iter.value());
                         pthread_create(&thread, NULL, send_img, (void*)&iter.value());
-                        pthread_join(thread, NULL);
+                        
                         break;
                     }
                     else if (!strcmp(command, "getStreamLength")) {
                         sendGetStreamLength(new_socket);
                     }
-
+                    else if (!strcmp(command, "publish")) {
+                        double val = 0;
+                        ff_amf_read_number(&context, &val);
+                        ff_amf_read_null(&context);
+                        char streamName[50] = { 0 };
+                        ff_amf_read_string(&context, (uint8_t*)streamName, CSIZE, &length);
+                        createStream(streamName, new_socket, channelData, true);
+                        QMap<QString, Channel>::iterator iter = channelData.find(streamName);
+                        pthread_t thread;
+                        pthread_create(&thread, NULL, recv_img, (void*)&iter.value());
+                       
+                        break;
+                    }
                 }
 
 
